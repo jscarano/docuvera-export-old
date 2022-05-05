@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 
-import { Notes } from './notesTable';
-import { handler } from './writeFunction';
+import { Notes } from '../types/notesTable';
+import { handler } from '../lambdas/writeFunction';
 
 const note = {
   pk: 'note',

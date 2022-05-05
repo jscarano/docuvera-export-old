@@ -1,5 +1,5 @@
-import { Notes } from './notesTable';
-import { handler } from './readFunction';
+import { Notes } from '../types/notesTable';
+import { handler } from '../lambdas/readFunction';
 
 const note = {
   pk: 'note',

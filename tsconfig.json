@@ -17,9 +17,20 @@
     "inlineSources": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
-    "typeRoots": ["./node_modules/@types"],
+    "skipLibCheck": true,
     "jsx": "react",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "dynamodb-onetable": ["node_modules/dynamodb-onetable/dist/mjs"]
+    }
   },
-  "exclude": ["node_modules", "cdk.out"]
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "cdk.out",
+    "bin",
+    "./node_modules/**/*.d.ts"
+  ]
 }

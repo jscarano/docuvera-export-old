@@ -1,0 +1,90 @@
+{
+    "resourceType": "Bundle",
+    "identifier": {
+        "system": "https://datapedia.mskcc.org/index.php/IDB.PROTOCOL",
+        "value": "17-558"
+    },
+    "type": "searchset",
+    "total": 47,
+    "link": [
+        {
+            "relation": "self",
+            "url": "https://webapit.mskcc.org:8443/api360/v1/clinical/observations?_count=100&category=laboratory&page=1&researchstudy=17-558&page=1"
+        },
+        {
+            "relation": "first",
+            "url": "https://webapit.mskcc.org:8443/api360/v1/clinical/observations?_count=100&category=laboratory&page=1&researchstudy=17-558&page=1"
+        },
+        {
+            "relation": "last",
+            "url": "https://webapit.mskcc.org:8443/api360/v1/clinical/observations?_count=100&category=laboratory&page=1&researchstudy=17-558&page=1"
+        },
+        {
+            "relation": "previous",
+            "url": null
+        },
+        {
+            "relation": "next",
+            "url": null
+        }
+    ],
+    "entry": [
+        {
+            "id": 500004202,
+            "fullUrl": "https://webapit.mskcc.org:8443/api360/v1/clinical/observations/500004202",
+            "resource": {
+                "id": 500004202,
+                "resourceType": "Observation",
+                "extension": [
+                    {
+                        "valueCode": "17-558",
+                        "url": "http://hl7.org/fhir/StructureDefinition/workflow-researchStudy"
+                    }
+                ],
+                "identifier": [
+                    {
+                        "system": "https://datapedia.mskcc.org/index.php/LAB_RESULTS.LR_RESULT_GUID",
+                        "value": 500004202
+                    }
+                ],
+                "status": "final",
+                "category": [
+                    {
+                        "coding": [
+                            {
+                                "system": "http://hl7.org/fhir/observation-category",
+                                "code": "laboratory",
+                                "display": "Laboratory"
+                            }
+                        ],
+                        "text": "Laboratory"
+                    }
+                ],
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "1751-7",
+                            "display": "PALB"
+                        }
+                    ],
+                    "text": "PALB"
+                },
+                "subject": {
+                    "reference": "Patient/14002"
+                },
+                "effectiveDateTime": "2019-12-09T09:39:00+00:00",
+                "issued": "2019-12-09T09:39:00+00:00",
+                "valueQuantity": {
+                    "value": 3,
+                    "unit": "g/dL"
+                },
+                "referenceRange": [
+                    {
+                        "text": "3.8-5.0"
+                    }
+                ]
+            }
+        }
+    ]
+}

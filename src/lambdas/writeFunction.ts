@@ -3,7 +3,7 @@ import type {
   APIGatewayProxyResultV2,
 } from 'aws-lambda';
 
-import { Notes } from './notesTable';
+import { Notes } from '../types/notesTable';
 
 export const handler = async (
   event: APIGatewayProxyEventV2

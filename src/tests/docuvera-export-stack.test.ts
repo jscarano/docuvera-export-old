@@ -1,12 +1,12 @@
 import { App } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 
-import { CdkThreeTierServerlessStack } from './cdk-three-tier-serverless-stack';
+import { DocuveraExportStack } from '../docuvera-export-stack';
 
 describe('Stack test', () => {
   test('snapshot', () => {
     const app = new App();
-    const stack = new CdkThreeTierServerlessStack(app, 'TestStack');
+    const stack = new DocuveraExportStack(app, 'TestStack');
     const cfn = Template.fromStack(stack).toJSON();
     const resources = cfn.Resources;
     const matchObject: {
