@@ -9,7 +9,7 @@ export const handler = async (event: any): Promise<any> => {
   const fs = require('fs');
 
   try {
-    const template = fs.readFileSync('/templates/FIHR.template.json', 'utf8');
+    const template = fs.readFileSync('./src/templates/FIHR.template.json', 'utf8');
       const hTemplate = Handlebars.compile(template);
       const result = hTemplate(event);
       console.log(result);

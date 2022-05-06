@@ -9,7 +9,7 @@
 import { get as _get, post as _post } from 'superagent';
 import * as msal from "@azure/msal-node";
 import { AuthenticationResult, ClientCredentialRequest } from '@azure/msal-node';
-import { ISharePointConfig } from 'src/interfaces/ISharePointConffig';
+import { ISharePointConfig } from 'src/interfaces/ISharePointConfig';
 
 export class SPClient {
     private _spConfig: ISharePointConfig;
@@ -18,8 +18,7 @@ export class SPClient {
         this._spConfig = spConfig;
     }
 
-    public uploadFile(filename: string, fileBuffer: ArrayBuffer): Promise<any> {
-        //console.log("uploadFile", filename, fileBuffer);
+    public uploadFile(filename: string, fileBuffer: any): Promise<any> {
         return new Promise<any>((resolve, reject) => {
             const headers = {} as Record<string, string>;
             // Construct the Endpoint  
@@ -28,21 +27,17 @@ export class SPClient {
                 libUrl = `${this._spConfig.webUrl}/${this._spConfig.libraryTitle}/${this._spConfig.folderPath}`;
             }
             const url = `${this._spConfig.webUrl}/_api/Web/GetFolderByServerRelativeUrl('${libUrl}')/Files/add(overwrite=true, url='${filename}')`;
-            //console.log("SP URL", url);
+
             this.getAuthToken().then((authResp) => {
-                //console.log("uploadFile auth", authResp);                
+                //console.log("uploadFile auth", authResp);
                 if (authResp) {
-                    headers.Authorization = `Bearer ${authResp.accessToken}`;              
+                    headers.Authorization = `Bearer ${authResp.accessToken}`;
                     headers.Accept = "application/json";
-                    _post(`${this._spConfig.webUrl}/_api/contextinfo`).set(headers).accept("application/json").then((contextResp: any) => {
-                        console.log("uploadFile context", contextResp);
-                        headers["X-RequestDigest"] = contextResp.data.FormDigestValue;    
-                        _post(url).set(headers).send(fileBuffer).then((uploadResp: any) => {
-                            console.log("uploadFile upload", uploadResp);
-                            resolve(uploadResp);
-                        }).catch((error: any) => {
-                            reject(error);
-                        });
+                    _post(url).set(headers).send(fileBuffer).then((uploadResp: any) => {
+                        //console.log("uploadFile upload", uploadResp);
+                        resolve(uploadResp);
+                    }).catch((error: any) => {
+                        reject(error);
                     });
                 }
             }).catch((err: any) => {
@@ -53,23 +48,47 @@ export class SPClient {
 
     private getAuthToken(): Promise<AuthenticationResult | null> {
         return new Promise<AuthenticationResult | null>((resolve, reject) => {
-            const clientConfig = {
+            const fs = require('fs');
+            const privateKeySource = fs.readFileSync('./src/certs/scarano-sample.pem');
+            const crypto = require('crypto');
+            const privateKeyObject = crypto.createPrivateKey({
+                key: privateKeySource,
+                passphrase: "password", // enter your certificate passphrase here
+                format: 'pem'
+            });
+
+            const privateKey = privateKeyObject.export({
+                format: 'pem',
+                type: 'pkcs1'
+            });
+
+            const config: msal.Configuration = {
                 auth: {
                     clientId: this._spConfig.clientId,
-                    clientSecret: this._spConfig.clientSecret,
-                    authority: `https://login.microsoftonline.com/${this._spConfig.tenantId}`
+                    authority: `https://login.microsoftonline.com/${this._spConfig.tenantId}`,
+                    clientCertificate: {
+                        thumbprint: this._spConfig.certificateThumbprint, // can be obtained when uploading certificate to Azure AD
+                        privateKey: privateKey,
+                    }
+                },
+                system: {
+                    loggerOptions: {
+                        // loggerCallback(loglevel, message, containsPii) {
+                        //     console.log('loglevel', loglevel, message);
+                        // },
+                        piiLoggingEnabled: false,
+                        logLevel: msal.LogLevel.Verbose,
+                    },
                 }
             };
+            // console.log("config", config);
             // Create msal application object
-            const cca = new msal.ConfidentialClientApplication(clientConfig);
+            const cca = new msal.ConfidentialClientApplication(config);
 
-            // With client credentials flows permissions need to be granted in the portal by a tenant administrator.
-            // The scope is always in the format "<resource>/.default"
-            const clientCredentialRequest: ClientCredentialRequest = {
-                scopes: [`${this._spConfig.webUrl}/.default`], // replace with your resource
+            const tokenRequest: msal.ClientCredentialRequest = {
+                scopes: [`${this._spConfig.webUrl}/.default`],
             };
-
-            cca.acquireTokenByClientCredential(clientCredentialRequest).then((response: AuthenticationResult | null) => {
+            cca.acquireTokenByClientCredential(tokenRequest).then((response) => {
                 resolve(response);
             }).catch((error) => {
                 reject(JSON.stringify(error));

@@ -3,6 +3,6 @@ export interface ISharePointConfig {
     libraryTitle: string;
     folderPath?: string;
     clientId: string;
-    clientSecret: string;
+    certificateThumbprint: string;
     tenantId: string;    
 }
