@@ -13,6 +13,9 @@ import {
   Stack,
   StackProps,
 } from 'aws-cdk-lib';
+import { Pass, CfnStateMachine, StateMachineType } from 'aws-cdk-lib/aws-stepfunctions';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { StateMachine } from './classes/StateMachine';
 // import {
 //   CfnOutput,
 //   DockerImage,
@@ -105,6 +108,89 @@ export class DocuveraExportStack extends Stack {
       methods: [HttpMethod.POST],
       path: '/notes',
     });
+
+
+    // Create a state machine using JSON 
+    // using example from https://github.com/mbonig/state-machine
+    // const secret = new Secret(this, 'Secret', {});
+    // new StateMachine(this, 'Test', {
+    //   stateMachineName: 'A nice state machine',
+    //   definition: JSON.parse(fs.readFileSync(path.join(__dirname, 'sample.json'), 'utf8').toString()),
+    //   overrides: {
+    //     'Read database credentials secret': {
+    //       Parameters: {
+    //         SecretId: secret.secretArn,
+    //       },
+    //     },
+    //   },
+    // });
+
+    // Create a state machine using JSON 
+    // You can also override nested states in arrays, for example:
+    // new StateMachine(this, 'Test', {
+    //   stateMachineName: 'A-nice-state-machine',
+    //   overrides: {
+    //     Branches: [{
+    //       // pass an empty object too offset overrides
+    //     }, {
+    //       StartAt: 'StartInstances',
+    //       States: {
+    //         StartInstances: {
+    //           Parameters: {
+    //             InstanceIds: ['INSTANCE_ID'],
+    //           },
+    //         },
+    //       },
+    //     }],
+    //   },
+    //   stateMachineType: StateMachineType.STANDARD,
+    //   definition: {
+    //     States: {
+    //       Branches: [
+    //         {
+    //           StartAt: 'ResumeCluster',
+    //           States: {
+    //             'Redshift Pass': {
+    //               Type: 'Pass',
+    //               End: true,
+    //             },
+    //           },
+    //         },
+    //         {
+    //           StartAt: 'StartInstances',
+    //           States: {
+    //             'StartInstances': {
+    //               Type: 'Task',
+    //               Parameters: {
+    //                 InstanceIds: [
+    //                   'MyData',
+    //                 ],
+    //               },
+    //               Resource: 'arn:aws:states:::aws-sdk:ec2:startInstances',
+    //               Next: 'DescribeInstanceStatus',
+    //             },
+    //             'DescribeInstanceStatus': {
+    //               Type: 'Task',
+    //               Next: 'EC2 Pass',
+    //               Parameters: {
+    //                 InstanceIds: [
+    //                   'MyData',
+    //                 ],
+    //               },
+    //               Resource: 'arn:aws:states:::aws-sdk:ec2:describeInstanceStatus',
+    //             },
+    //             'EC2 Pass': {
+    //               Type: 'Pass',
+    //               End: true,
+    //             },
+    //           },
+    //         },
+    //       ],
+    //     },
+    //   },
+    // });
+
+
 
     // // Storage for assets only. NOT an S3 website.
     // const websiteBucket = new Bucket(this, 'WebsiteBucket', {

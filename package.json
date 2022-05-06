@@ -37,6 +37,7 @@
     "dynamodb-onetable": "2.2.0",
     "handlebars": "^4.7.7",
     "lambda-log": "^3.1.0",
+    "lodash.merge": "^4.6.2",
     "source-map-support": "^0.5.16",
     "superagent": "^7.1.3"
   }
