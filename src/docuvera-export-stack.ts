@@ -48,28 +48,27 @@ export class DocuveraExportStack extends Stack {
     super(scope, id, props);
 
     // Demo-quality props. For production, you want a different removalPolicy and possibly a different billingMode.
-    const table = new Table(this, 'NotesTable', {
+    const table = new Table(this, 'ConfigurationTable', {
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: { name: 'pk', type: AttributeType.STRING },
       removalPolicy: RemovalPolicy.DESTROY,
       sortKey: { name: 'sk', type: AttributeType.STRING },
-      tableName: 'NotesTable',
+      tableName: 'ConfigurationTable',
     });
 
     // Functions could have memory tuned to save $$, but should be pretty cheap in any case.
-    const readFunction = new NodejsFunction(this, 'ReadNotesFn', {
+    // const readFunction = new NodejsFunction(this, 'ReadNotesFn', {
+    //   architecture: Architecture.ARM_64,
+    //   entry: `${__dirname}/lambdas/readFunction.ts`
+    // });
+
+    const uploadConfigFunction = new NodejsFunction(this, 'UploadConfigurationFn', {
       architecture: Architecture.ARM_64,
-      entry: `${__dirname}/lambdas/readFunction.ts`
+      entry: `${__dirname}/lambdas/uploadConfigFunction.ts`
     });
 
-    const writeFunction = new NodejsFunction(this, 'WriteNoteFn', {
-      architecture: Architecture.ARM_64,
-      entry: `${__dirname}/lambdas/writeFunction.ts`
-    });
-
-
-    table.grantReadData(readFunction);
-    table.grantWriteData(writeFunction);
+    table.grantReadData(uploadConfigFunction);
+    table.grantWriteData(uploadConfigFunction);
 
 
     const convertFunction = new NodejsFunction(this, 'ConvertFn', {
@@ -79,7 +78,7 @@ export class DocuveraExportStack extends Stack {
 
     // API could be improved with authorization and models to validate payloads.
     // In production, you will want access logging.
-    const api = new HttpApi(this, 'NotesApi', {
+    const api = new HttpApi(this, 'ConfigApi', {
       corsPreflight: {
         allowHeaders: ['Content-Type'],
         allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST],
@@ -88,25 +87,25 @@ export class DocuveraExportStack extends Stack {
     });
 
     // Creates the Cfn AWS::ApiGatewayV2::Integration resources
-    const readIntegration = new HttpLambdaIntegration(
-      'ReadIntegration',
-      readFunction
-    );
-    const writeIntegration = new HttpLambdaIntegration(
-      'WriteIntegration',
-      writeFunction
+    // const readIntegration = new HttpLambdaIntegration(
+    //   'ReadIntegration',
+    //   readFunction
+    // );
+    const uploadConfigurationIntegration = new HttpLambdaIntegration(
+      'UploadConfigurationIntegration',
+      uploadConfigFunction
     );
 
     // Creates the Cfn AWS::ApiGatewayV2::Route resources, assigning a path to an integration
+    // api.addRoutes({
+    //   integration: readIntegration,
+    //   methods: [HttpMethod.GET],
+    //   path: '/notes',
+    // });
     api.addRoutes({
-      integration: readIntegration,
-      methods: [HttpMethod.GET],
-      path: '/notes',
-    });
-    api.addRoutes({
-      integration: writeIntegration,
+      integration: uploadConfigurationIntegration,
       methods: [HttpMethod.POST],
-      path: '/notes',
+      path: '/config',
     });
 
 
