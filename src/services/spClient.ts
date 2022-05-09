@@ -9,7 +9,7 @@
 import { get as _get, post as _post } from 'superagent';
 import * as msal from "@azure/msal-node";
 import { AuthenticationResult, ClientCredentialRequest } from '@azure/msal-node';
-import { ISharePointConfig } from 'src/interfaces/ISharePointConfig';
+import { ISharePointConfig } from '../interfaces/ISharePointConfig';
 
 export class SPClient {
     private _spConfig: ISharePointConfig;

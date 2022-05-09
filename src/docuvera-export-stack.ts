@@ -12,10 +12,19 @@ import {
   RemovalPolicy,
   Stack,
   StackProps,
+  CfnOutput,
 } from 'aws-cdk-lib';
 import { Pass, CfnStateMachine, StateMachineType } from 'aws-cdk-lib/aws-stepfunctions';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { StateMachine } from './classes/StateMachine';
+import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+import { OriginAccessIdentity, Distribution, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
+import { AwsCustomResource, PhysicalResourceId, AwsCustomResourcePolicy } from 'aws-cdk-lib/custom-resources';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { S3Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
+import { Rule } from 'aws-cdk-lib/aws-events';
 // import {
 //   CfnOutput,
 //   DockerImage,
@@ -56,24 +65,41 @@ export class DocuveraExportStack extends Stack {
       tableName: 'ConfigurationTable',
     });
 
+
+    const eventConsumerLambda = new NodejsFunction(this, "EventReceiverFn", {
+      architecture: Architecture.ARM_64,
+      entry: `${__dirname}/lambda/eventConsumerLambda.ts`,
+      logRetention: RetentionDays.ONE_WEEK,          
+    });
+
+    const eventConsumerRule = new Rule(this, "EventReceiverFn-Rule", {
+      description: "Approved Transactions",
+      eventPattern: { source: ["com.mycompany.myapp"] },
+    });
+
+    eventConsumerRule.addTarget(new LambdaFunction(eventConsumerLambda));
+
     // Functions could have memory tuned to save $$, but should be pretty cheap in any case.
-    // const readFunction = new NodejsFunction(this, 'ReadNotesFn', {
-    //   architecture: Architecture.ARM_64,
-    //   entry: `${__dirname}/lambdas/readFunction.ts`
-    // });
+    const readConfigurationFunction = new NodejsFunction(this, 'ReadConfigaurationFn', {
+      architecture: Architecture.ARM_64,
+      entry: `${__dirname}/lambdas/readConfigurationFunction.ts`,
+      logRetention: RetentionDays.ONE_WEEK,     
+    });
 
     const uploadConfigFunction = new NodejsFunction(this, 'UploadConfigurationFn', {
       architecture: Architecture.ARM_64,
-      entry: `${__dirname}/lambdas/uploadConfigFunction.ts`
+      entry: `${__dirname}/lambdas/uploadConfigFunction.ts`,
+      logRetention: RetentionDays.ONE_WEEK,     
     });
 
-    table.grantReadData(uploadConfigFunction);
+    table.grantReadData(readConfigurationFunction);
     table.grantWriteData(uploadConfigFunction);
 
 
     const convertFunction = new NodejsFunction(this, 'ConvertFn', {
       architecture: Architecture.ARM_64,
-      entry: `${__dirname}/lambdas/convertFunction.ts`
+      entry: `${__dirname}/lambdas/convertFunction.ts`,
+      logRetention: RetentionDays.ONE_WEEK,     
     });
 
     // API could be improved with authorization and models to validate payloads.
@@ -87,21 +113,21 @@ export class DocuveraExportStack extends Stack {
     });
 
     // Creates the Cfn AWS::ApiGatewayV2::Integration resources
-    // const readIntegration = new HttpLambdaIntegration(
-    //   'ReadIntegration',
-    //   readFunction
-    // );
+    const readConfigurationIntegration = new HttpLambdaIntegration(
+      'ReadConfigurationIntegration',
+      readConfigurationFunction
+    );
     const uploadConfigurationIntegration = new HttpLambdaIntegration(
       'UploadConfigurationIntegration',
       uploadConfigFunction
     );
 
     // Creates the Cfn AWS::ApiGatewayV2::Route resources, assigning a path to an integration
-    // api.addRoutes({
-    //   integration: readIntegration,
-    //   methods: [HttpMethod.GET],
-    //   path: '/notes',
-    // });
+    api.addRoutes({
+      integration: readConfigurationIntegration,
+      methods: [HttpMethod.GET],
+      path: '/config',
+    });
     api.addRoutes({
       integration: uploadConfigurationIntegration,
       methods: [HttpMethod.POST],
@@ -111,18 +137,13 @@ export class DocuveraExportStack extends Stack {
 
     // Create a state machine using JSON 
     // using example from https://github.com/mbonig/state-machine
-    // const secret = new Secret(this, 'Secret', {});
-    // new StateMachine(this, 'Test', {
-    //   stateMachineName: 'A nice state machine',
-    //   definition: JSON.parse(fs.readFileSync(path.join(__dirname, 'sample.json'), 'utf8').toString()),
-    //   overrides: {
-    //     'Read database credentials secret': {
-    //       Parameters: {
-    //         SecretId: secret.secretArn,
-    //       },
-    //     },
-    //   },
-    // });
+    const secret = new Secret(this, 'Secret', {});
+    const fs = require('fs');
+    const path = require('path');
+    new StateMachine(this, 'MyStateMachine', {
+      stateMachineName: 'MyStateMachine',
+      definition: JSON.parse(fs.readFileSync(path.join(__dirname, './stateMachines/sample.json'), 'utf8').toString())
+    });
 
     // Create a state machine using JSON 
     // You can also override nested states in arrays, for example:
@@ -191,24 +212,24 @@ export class DocuveraExportStack extends Stack {
 
 
 
-    // // Storage for assets only. NOT an S3 website.
-    // const websiteBucket = new Bucket(this, 'WebsiteBucket', {
-    //   autoDeleteObjects: true,
-    //   blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-    //   removalPolicy: RemovalPolicy.DESTROY,
-    // });
+    // Storage for assets only. NOT an S3 website.
+    const functionBucket = new Bucket(this, 'FunctionBucket', {
+      autoDeleteObjects: true,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
 
-    // // Grant read access to the distribution.
-    // const originAccessIdentity = new OriginAccessIdentity(
-    //   this,
-    //   'OriginAccessIdentity'
-    // );
-    // websiteBucket.grantRead(originAccessIdentity);
+    // Grant read access to the distribution.
+    const originAccessIdentity = new OriginAccessIdentity(
+      this,
+      'OriginAccessIdentity'
+    );
+    functionBucket.grantRead(originAccessIdentity);
 
     // Cloudfront distribution with SPA config and https upgrade.
     // const distribution = new Distribution(this, 'Distribution', {
     //   defaultBehavior: {
-    //     origin: new S3Origin(websiteBucket, { originAccessIdentity }),
+    //     origin: new S3Origin(functionBucket, { originAccessIdentity }),
     //     viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
     //   },
     //   defaultRootObject: 'index.html',
@@ -264,31 +285,31 @@ export class DocuveraExportStack extends Stack {
     // });
 
     // Generate a config.json file and place in S3 so the web app can grab the API URL.
-    // new AwsCustomResource(this, 'ApiUrlResource', {
-    //   logRetention: RetentionDays.ONE_DAY,
-    //   onUpdate: {
-    //     action: 'putObject',
-    //     parameters: {
-    //       Body: Stack.of(this).toJsonString({
-    //         [this.stackName]: { HttpApiUrl: api.apiEndpoint },
-    //       }),
-    //       Bucket: websiteBucket.bucketName,
-    //       CacheControl: 'max-age=0, no-cache, no-store, must-revalidate',
-    //       ContentType: 'application/json',
-    //       Key: 'config.json',
-    //     },
-    //     physicalResourceId: PhysicalResourceId.of('config'),
-    //     service: 'S3',
-    //   },
-    //   policy: AwsCustomResourcePolicy.fromStatements([
-    //     new PolicyStatement({
-    //       actions: ['s3:PutObject'],
-    //       resources: [websiteBucket.arnForObjects('config.json')],
-    //     }),
-    //   ]),
-    // });
+    new AwsCustomResource(this, 'ApiUrlResource', {
+      logRetention: RetentionDays.ONE_DAY,
+      onUpdate: {
+        action: 'putObject',
+        parameters: {
+          Body: Stack.of(this).toJsonString({
+            [this.stackName]: { HttpApiUrl: api.apiEndpoint },
+          }),
+          Bucket: functionBucket.bucketName,
+          CacheControl: 'max-age=0, no-cache, no-store, must-revalidate',
+          ContentType: 'application/json',
+          Key: 'config.json',
+        },
+        physicalResourceId: PhysicalResourceId.of('config'),
+        service: 'S3',
+      },
+      policy: AwsCustomResourcePolicy.fromStatements([
+        new PolicyStatement({
+          actions: ['s3:PutObject'],
+          resources: [functionBucket.arnForObjects('config.json')],
+        }),
+      ]),
+    });
 
-    // new CfnOutput(this, 'HttpApiUrl', { value: api.apiEndpoint });
+    new CfnOutput(this, 'HttpApiUrl', { value: api.apiEndpoint });
 
     // new CfnOutput(this, 'DistributionDomain', {
     //   value: distribution.distributionDomainName,

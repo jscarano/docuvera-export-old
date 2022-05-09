@@ -1,14 +1,17 @@
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
-import { Configurations } from '../types/configurationTable';
+import { DynamoClient } from '../services/dynamoClient';
 
-export const handle = (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
+export const handler = (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
     return new Promise<APIGatewayProxyResultV2>((resolve, reject) => {
-        const body = event.body;
+        const body  = event.body;
         if (body) {
-            Configurations.create(JSON.parse(body)).then((config) => {
-                resolve({ body: JSON.stringify(config), statusCode: 200 });
+            console.log("Upload Configuration", body);
+            const client: DynamoClient = new DynamoClient();
+            client.uploadConfiguration(JSON.parse(body)).then((response) => {
+                resolve({ body: response, statusCode: 200 });
             });
+        } else {
+            reject({ body: 'Error, invalid input!', statusCode: 400 });
         }
-        reject({ body: 'Error, invalid input!', statusCode: 400 });
     });
 };

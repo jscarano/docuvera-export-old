@@ -1,24 +1,24 @@
-import { Notes } from '../types/notesTable';
-import { handler } from '../lambdas/readFunction';
+// import { Notes } from '../types/notesTable';
+// import { handler } from '../lambdas/readFunction';
 
-const note = {
-  pk: 'note',
-  sk: new Date().toISOString(),
-  date: new Date().toISOString(),
-  note: `Don't forget things!`,
-  subject: 'An Important Note',
-  type: 'note',
-};
+// const note = {
+//   pk: 'note',
+//   sk: new Date().toISOString(),
+//   date: new Date().toISOString(),
+//   note: `Don't forget things!`,
+//   subject: 'An Important Note',
+//   type: 'note',
+// };
 
-describe('Read Function', () => {
-  beforeAll(() => {
-    jest.spyOn(Notes, 'find').mockReturnValue(Promise.resolve([note]));
-  });
-  test('Return a 200 response', async () => {
-    const response = await handler();
-    expect(response).toMatchObject({
-      body: JSON.stringify([note]),
-      statusCode: 200,
-    });
-  });
-});
+// describe('Read Function', () => {
+//   beforeAll(() => {
+//     jest.spyOn(Notes, 'find').mockReturnValue(Promise.resolve([note]));
+//   });
+//   test('Return a 200 response', async () => {
+//     const response = await handler();
+//     expect(response).toMatchObject({
+//       body: JSON.stringify([note]),
+//       statusCode: 200,
+//     });
+//   });
+// });

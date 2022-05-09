@@ -1,123 +1,71 @@
 {
-    "Comment": "A description of my state machine",
-    "StartAt": "Read database credentials secret",
+    "Comment": "A Hello World example demonstrating various state types of the Amazon States Language",
+    "StartAt": "Pass",
     "States": {
-        "Read database credentials secret": {
-            "Type": "Task",
-            "Parameters": {
-                "SecretId": "DbSecret685A0FA5-GXCINaDfwzla"
-            },
-            "Resource": "arn:aws:states:::aws-sdk:secretsmanager:getSecretValue",
-            "Next": "Parse SecretString",
-            "ResultPath": "$.dbSecret"
-        },
-        "Parse SecretString": {
-            "Type": "Pass",
-            "Next": "Generate username and password",
-            "InputPath": "$.dbSecret",
-            "Parameters": {
-                "Value.$": "States.StringToJson($.SecretString)"
-            },
-            "ResultPath": "$.dbSecret"
-        },
-        "Generate username and password": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-                "Payload.$": "$",
-                "FunctionName": "arn:aws:lambda:us-east-1:536309290949:function:step-functions-with-the-c-GenerateUsernameAndPassw-OZ3vhotMEJPK"
-            },
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException"
-                    ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
-                }
-            ],
-            "Next": "Invoke SQL script against database",
-            "ResultPath": "$.usernameAndPassword",
-            "ResultSelector": {
-                "Username.$": "$.Payload.username",
-                "Password.$": "$.Payload.password"
+      "Pass": {
+        "Comment": "A Pass state passes its input to its output, without performing work. Pass states are useful when constructing and debugging state machines.",
+        "Type": "Pass",
+        "Next": "Hello World example?"
+      },
+      "Hello World example?": {
+        "Comment": "A Choice state adds branching logic to a state machine. Choice rules can implement 16 different comparison operators, and can be combined using And, Or, and Not",
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.IsHelloWorldExample",
+            "BooleanEquals": true,
+            "Next": "Yes"
+          },
+          {
+            "Variable": "$.IsHelloWorldExample",
+            "BooleanEquals": false,
+            "Next": "No"
+          }
+        ],
+        "Default": "Yes"
+      },
+      "Yes": {
+        "Type": "Pass",
+        "Next": "Wait 3 sec"
+      },
+      "No": {
+        "Type": "Fail",
+        "Cause": "Not Hello World"
+      },
+      "Wait 3 sec": {
+        "Comment": "A Wait state delays the state machine from continuing for a specified time.",
+        "Type": "Wait",
+        "Seconds": 3,
+        "Next": "Parallel State"
+      },
+      "Parallel State": {
+        "Comment": "A Parallel state can be used to create parallel branches of execution in your state machine.",
+        "Type": "Parallel",
+        "Next": "Hello World",
+        "Branches": [
+          {
+            "StartAt": "Hello",
+            "States": {
+              "Hello": {
+                "Type": "Pass",
+                "End": true
+              }
             }
-        },
-        "Invoke SQL script against database": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-                "Payload.$": "$",
-                "FunctionName": "arn:aws:lambda:us-east-1:536309290949:function:step-functions-with-the-cdk-ScriptProvider32E26F41-DBeWWSBNMARo"
-            },
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException"
-                    ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
-                }
-            ],
-            "Next": "Generate OTS",
-            "ResultPath": "$.invokeOutput"
-        },
-        "Generate OTS": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-                "Payload.$": "$",
-                "FunctionName": "arn:aws:lambda:us-east-1:536309290949:function:step-functions-with-the-cdk-GenerateOtsBE7C09B0-nTIEu0OxGURq"
-            },
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException"
-                    ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
-                }
-            ],
-            "Next": "Send email",
-            "ResultPath": "$.ots",
-            "ResultSelector": {
-                "OtsUrl.$": "$.Payload.otsUrl"
+          },
+          {
+            "StartAt": "World",
+            "States": {
+              "World": {
+                "Type": "Pass",
+                "End": true
+              }
             }
-        },
-        "Send email": {
-            "Type": "Task",
-            "End": true,
-            "Parameters": {
-                "FromEmailAddress": "matthew.bonig@gmail.com",
-                "Content": {
-                    "Simple": {
-                        "Body": {
-                            "Html": {
-                                "Data": "You're getting new creds!"
-                            },
-                            "Text": {
-                                "Data": "You're getting new creds!"
-                            }
-                        },
-                        "Subject": {
-                            "Data": "You're getting new creds!"
-                        }
-                    }
-                },
-                "Destination": {
-                    "ToAddresses.$": "States.Array($.email)"
-                }
-            },
-            "Resource": "arn:aws:states:::aws-sdk:sesv2:sendEmail"
-        }
+          }
+        ]
+      },
+      "Hello World": {
+        "Type": "Pass",
+        "End": true
+      }
     }
-}
+  }
