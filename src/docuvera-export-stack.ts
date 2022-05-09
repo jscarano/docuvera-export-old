@@ -4,7 +4,7 @@ import {
   HttpMethod,
 } from '@aws-cdk/aws-apigatewayv2-alpha';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
-import { Architecture } from 'aws-cdk-lib/aws-lambda';
+import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Construct } from 'constructs';
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
@@ -56,8 +56,10 @@ export class DocuveraExportStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
+    const BASE_NAME = "DocuveraExport-";
+
     // Demo-quality props. For production, you want a different removalPolicy and possibly a different billingMode.
-    const table = new Table(this, 'ConfigurationTable', {
+    const table = new Table(this, 'ConfigurationTable', {      
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: { name: 'pk', type: AttributeType.STRING },
       removalPolicy: RemovalPolicy.DESTROY,
@@ -67,8 +69,10 @@ export class DocuveraExportStack extends Stack {
 
 
     const eventConsumerLambda = new NodejsFunction(this, "EventReceiverFn", {
+      functionName: `${BASE_NAME}EventReceiver`,
       architecture: Architecture.ARM_64,
-      entry: `${__dirname}/lambda/eventConsumerLambda.ts`,
+      runtime: Runtime.NODEJS_14_X,
+      entry: `${__dirname}/lambdas/eventReceiverFunction.ts`,
       logRetention: RetentionDays.ONE_WEEK,          
     });
 
@@ -80,14 +84,18 @@ export class DocuveraExportStack extends Stack {
     eventConsumerRule.addTarget(new LambdaFunction(eventConsumerLambda));
 
     // Functions could have memory tuned to save $$, but should be pretty cheap in any case.
-    const readConfigurationFunction = new NodejsFunction(this, 'ReadConfigaurationFn', {
+    const readConfigurationFunction = new NodejsFunction(this, 'ReadConfigurationFn', {
+      functionName: `${BASE_NAME}ReadConfiguration`,
       architecture: Architecture.ARM_64,
+      runtime: Runtime.NODEJS_14_X,
       entry: `${__dirname}/lambdas/readConfigurationFunction.ts`,
       logRetention: RetentionDays.ONE_WEEK,     
     });
 
     const uploadConfigFunction = new NodejsFunction(this, 'UploadConfigurationFn', {
+      functionName: `${BASE_NAME}UploadConfiguration`,
       architecture: Architecture.ARM_64,
+      runtime: Runtime.NODEJS_14_X,
       entry: `${__dirname}/lambdas/uploadConfigFunction.ts`,
       logRetention: RetentionDays.ONE_WEEK,     
     });
@@ -97,7 +105,9 @@ export class DocuveraExportStack extends Stack {
 
 
     const convertFunction = new NodejsFunction(this, 'ConvertFn', {
+      functionName: `${BASE_NAME}Convert`,
       architecture: Architecture.ARM_64,
+      runtime: Runtime.NODEJS_14_X,
       entry: `${__dirname}/lambdas/convertFunction.ts`,
       logRetention: RetentionDays.ONE_WEEK,     
     });
@@ -140,8 +150,8 @@ export class DocuveraExportStack extends Stack {
     const secret = new Secret(this, 'Secret', {});
     const fs = require('fs');
     const path = require('path');
-    new StateMachine(this, 'MyStateMachine', {
-      stateMachineName: 'MyStateMachine',
+    const stateMachine = new StateMachine(this, 'MyStateMachine', {      
+      stateMachineName: `${BASE_NAME}StateMachine`,
       definition: JSON.parse(fs.readFileSync(path.join(__dirname, './stateMachines/sample.json'), 'utf8').toString())
     });
 
@@ -210,10 +220,9 @@ export class DocuveraExportStack extends Stack {
     //   },
     // });
 
-
-
     // Storage for assets only. NOT an S3 website.
     const functionBucket = new Bucket(this, 'FunctionBucket', {
+      bucketName: `${BASE_NAME}Bucket`.toLowerCase(),
       autoDeleteObjects: true,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -292,24 +301,26 @@ export class DocuveraExportStack extends Stack {
         parameters: {
           Body: Stack.of(this).toJsonString({
             [this.stackName]: { HttpApiUrl: api.apiEndpoint },
+            stateMachineArn: stateMachine.stateMachineArn
           }),
           Bucket: functionBucket.bucketName,
           CacheControl: 'max-age=0, no-cache, no-store, must-revalidate',
           ContentType: 'application/json',
-          Key: 'config.json',
+          Key: 'environment-config.json',
         },
-        physicalResourceId: PhysicalResourceId.of('config'),
+        physicalResourceId: PhysicalResourceId.of('environment-config'),
         service: 'S3',
       },
       policy: AwsCustomResourcePolicy.fromStatements([
         new PolicyStatement({
           actions: ['s3:PutObject'],
-          resources: [functionBucket.arnForObjects('config.json')],
+          resources: [functionBucket.arnForObjects('environment-config.json')],
         }),
       ]),
     });
 
-    new CfnOutput(this, 'HttpApiUrl', { value: api.apiEndpoint });
+    new CfnOutput(this, 'apiUrl', { value: api.apiEndpoint });
+
 
     // new CfnOutput(this, 'DistributionDomain', {
     //   value: distribution.distributionDomainName,
